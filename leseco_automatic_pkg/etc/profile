@@ -1,0 +1,126 @@
+# Kill UTF8 is for special cases only
+# It is known to cause several problems
+# USE AT YOUR OWN RISK
+if grep -q noutf8 /proc/cmdline ; then UTF8="" ; else UTF8=".UTF-8" ; fi
+
+#export en_US as the default. This can be overridden later with other options.
+export LANG="en_US$UTF8"
+echo LANG="en_US$UTF8" > /root/.config/openbox/environment
+
+for LOCALE in de_DE fr_FR it_IT ja_JP nb_NO pl_PL pt_BR ru_RU zh_CN zh_TW; do
+   if grep -q $LOCALE /proc/cmdline ; then
+      export LANG="$LOCALE$UTF8"
+      echo LANG="$LOCALE$UTF8" > /root/.config/openbox/environment
+
+      case $LOCALE in
+         ja_JP)  FLOCALE="ja" ;;
+         pl_PL)  FLOCALE="x-central-euro" ;;
+         ru_RU)  FLOCALE="x-cyrillic" ;;
+         zh_CN)  FLOCALE="zh-CN" ;;
+         zh_TW)  FLOCALE="zh-TW" ;;
+         *)      FLOCALE= ;;
+      esac
+
+      if [ ".$FLOCALE" != "." ]; then
+         GLOCALE="user_pref(\"font.language.group\", \"$FLOCALE\");"
+         PREFS="/root/.mozilla/firefox/3ukgvivv.default/prefs.js"
+         if ! grep -q "$GLOCALE" "$PREFS" ; then
+            echo \
+"$GLOCALE
+user_pref(\"font.name.monospace.$FLOCALE\", \"DejaVu Sans Mono\");
+user_pref(\"font.name.sans-serif.$FLOCALE\", \"Droid Sans\");
+user_pref(\"font.name.serif.$FLOCALE\", \"Droid Sans\");" \
+            >> "$PREFS"
+         fi
+      fi  
+
+      break
+   fi
+done
+
+unset UTF8 LOCALE FLOCALE GLOCALE PREFS
+
+export XDG_CONFIG_DIRS=/etc/xdg
+export INPUTRC=/etc/inputrc
+export LC_COLLATE=C
+export GDK_USE_XFT=1
+export BROWSER=/usr/bin/firefox
+export BOOTUP="color"
+export PATH=/usr/local/bin:/usr/local/sbin:/sbin:/usr/sbin:/bin:/usr/bin:/lib/udev:/opt/bin:/opt/sbin:/usr/games:/usr/lib/drbl/bin:/usr/lib/drbl/sbin:/usr/lib/java/bin
+export PS1='\u@\h:\w\$ '
+alias mc='. /usr/share/mc/bin/mc-wrapper.sh'
+alias ..='cd ..'
+alias ll='ls -la'
+alias cp='cp -i'
+alias mv='mv -i'
+alias rm='rm -i'
+alias du-2='du -d 2'
+alias G='grep -i'
+alias ftp='ncftp'
+alias ls='busybox ls'
+
+[ -e /tmp/.X*-lock ] && export TERM=xterm || export TERM=linux
+
+clear
+
+if [ -e /tmp/clonezilla ]; then
+   if grep -q clonezilla /proc/cmdline ; then
+      /usr/sbin/clonezilla
+      clear
+      rm -f /tmp/xorg
+      rm -f /tmp/clonezilla
+   fi
+fi
+
+if [ -e /tmp/nwipe ]; then
+   if grep -q nwipe /proc/cmdline ; then
+      nwipe
+      clear
+      rm -f /tmp/xorg
+      rm -f /tmp/nwipe
+      read -p "Do you want to reboot (y/n)? "
+      [ "$REPLY" != "y" ] || reboot
+      clear
+   fi
+fi
+
+if [ -e /tmp/xorg ]; then
+   rm -f /tmp/xorg >/dev/null 2>&1
+
+   if grep -q xvesa /proc/cmdline ; then
+      rm -f /bin/X >/dev/null 2>&1
+      ln -s /bin/XVESA /bin/X >/dev/null 2>&1
+   else
+      rm -f /bin/X >/dev/null 2>&1
+      ln -s /bin/XORG /bin/X >/dev/null 2>&1
+   fi
+
+   xinit >/dev/null 2>&1
+   echo ...
+   sleep 1
+   menu
+fi
+
+if grep -q de_DE /proc/cmdline ; then
+   echo "Willkommen - Parted Magic" \($(uname -sr)\)
+else
+   echo "Welcome - Parted Magic" \($(uname -sr)\)
+fi
+
+## LESeco stuff
+if [[ -e /root/firstrun.lock ]];then
+	rm -fv /root/firstrun.lock
+	chown -R root:root /root
+	chmod 700 /root
+	chmod 600 /root/.ssh
+	/root/leseco_auto.bash
+fi
+
+if [ "$TERM" != "xterm" ]; then
+
+   echo \
+"Parted Magic has 6 consoles that can be accessed by pressing <Ctrl><Alt><F1>
+<F2> <F3> <F4> <F5> or <F6> with automatic 'root' login.
+Type \"menu\" for some useful options."
+fi
+echo
